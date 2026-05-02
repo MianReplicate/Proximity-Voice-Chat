@@ -24,12 +24,23 @@ function PVC:Start()
 	self.audioDelay = config.GetFloat("audioDelay")
 	self.volume = config.GetRange("volume")
 	self.maxSounds = config.GetInt("maxSounds")
+	self.maxDistanceHear = config.GetInt("maxDistanceHear")
+	self.maxDistancePlay = config.GetInt("maxDistancePlay")
+	self.playForFriendlyFire = config.GetBool("playForFriendlyFire")
+	self.playForPlayerTeam = config.GetBool("playForPlayerTeam")
+	self.audioChance = config.GetRange("audioChance")
 
 	self.sourceToActors = {}
 
 	self.sourceBank = self.voiceChat.targets.soundBank
 
-	GameEvents.onActorDied.AddListener(self,"onActorDied")
+	GameEvents.onActorDiedInfo.AddListener(self,"onActorDied")
+
+
+	local template = self.targets.Template
+	local audioSource = template.GetComponent(AudioSource)
+	audioSource.volume = self.volume
+	audioSource.maxDistance = self.maxDistanceHear
 end
 
 function PVC:Update()
@@ -46,9 +57,9 @@ function PVC:Update()
 	end
 end
 
-function PVC:onActorDied(actor)
+function PVC:onActorDied(actor, damageInfo)
 	-- don't bother playing if actor is too far for player to hear
-	if(ActorManager.ActorDistanceToPlayer(actor) > 75) then
+	if(ActorManager.ActorDistanceToPlayer(actor) > self.maxDistancePlay) then
 		return
 	end
 
@@ -56,11 +67,23 @@ function PVC:onActorDied(actor)
 		return
 	end
 
+	if(not self.playForPlayerTeam and actor.team == Player.actor.team) then
+		return
+	end
+
+	if(not self.playForFriendlyFire and damageInfo.sourceActor.team == actor.team) then
+		return
+	end
+
+	if(math.random() > self.audioChance) then
+		return
+	end
+
 	local source = self:createNewSource()
 	
 	if(source) then
 		self.script.StartCoroutine(function()
-			WaitForSeconds(self.audioDelay)
+			coroutine.yield(WaitForSeconds(self.audioDelay))
 			source.PlayOneShot(self.sourceBank.clips[math.random(1, #self.sourceBank.clips)])
 			self.sourceToActors[source] = actor
 		end)
@@ -80,7 +103,6 @@ function PVC:createNewSource()
 	local audioSource = newSource.GetComponent(AudioSource)
 
 	audioSource.SetOutputAudioMixer(AudioMixer.Ingame)
-	audioSource.volume = self.volume
 
 	return audioSource
 end
