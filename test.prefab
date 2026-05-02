@@ -1,0 +1,160 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1450327976445928608
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5222062321539068418}
+  - component: {fileID: 6726400015927089120}
+  m_Layer: 0
+  m_Name: test
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5222062321539068418
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1450327976445928608}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 2259278910373322968}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6726400015927089120
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1450327976445928608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec3b8824308adc64fb1901cef109132a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mutators:
+  - name: Proximity Voice Chat
+    description: Modifies the Voice Chat Simulator to be proximity based!
+    menuImage: {fileID: 2800000, guid: 6700d063d1065704d8bb7b96868de5ba, type: 3}
+    mutatorPrefab: {fileID: 1450327976445928608, guid: 78fbe4228ad47a441b02d9ecc6b97647, type: 3}
+    configuration:
+      labels: []
+      integers:
+      - id: maxSounds
+        displayName: Max Ongoing Sounds
+        orderPriority: 4
+        value: 6
+      floats:
+      - id: audioDelay
+        displayName: Audio Delay
+        orderPriority: 1
+        value: 0
+      ranges:
+      - id: volume
+        displayName: Volume
+        orderPriority: 0
+        value:
+          value: 0.5
+          min: 0
+          max: 1
+          wholeNumbers: 0
+      strings: []
+      bools:
+      - id: affectsPlayer
+        displayName: Affects Player
+        orderPriority: 0
+        value: 0
+      dropdowns: []
+  - name: Voice Chat Simulator
+    description: 
+    menuImage: {fileID: 2800000, guid: 1b5485c9293d64340bab3d8c44d95f5d, type: 3}
+    mutatorPrefab: {fileID: 1709254077376921, guid: 64081e464492c15469a1ed9cc5c8145d, type: 3}
+    configuration:
+      labels:
+      - id: lb
+        displayName: <b>This mutator contains strong language not suitable for children.</b>
+        orderPriority: -5
+      - id: lb
+        displayName: 
+        orderPriority: 3
+      - id: lb
+        displayName: <b>Default voice chance is 50.</b>
+        orderPriority: 9
+      - id: lb
+        displayName: 
+        orderPriority: 30
+      - id: lb
+        displayName: <b>Default voice reaction delay is 0.5 miliseconds.</b>
+        orderPriority: 38
+      integers: []
+      floats:
+      - id: AudioDelay
+        displayName: Voice Reaction Delay
+        orderPriority: 39
+        value: 0.5
+      ranges:
+      - id: volume
+        displayName: Volume
+        orderPriority: 0
+        value:
+          value: 100
+          min: 0
+          max: 100
+          wholeNumbers: 1
+      - id: kChance
+        displayName: Voice Chance
+        orderPriority: 10
+        value:
+          value: 50
+          min: 0
+          max: 100
+          wholeNumbers: 1
+      strings: []
+      bools:
+      - id: allowTK
+        displayName: Voice Reactions on Teamkill
+        orderPriority: -1
+        value: 0
+      dropdowns: []
+--- !u!1 &1799220026407893892
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2259278910373322968}
+  m_Layer: 0
+  m_Name: IsCloth
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &2259278910373322968
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1799220026407893892}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 5222062321539068418}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
