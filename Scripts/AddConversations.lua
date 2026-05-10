@@ -61,7 +61,29 @@ function AddConversations:Start()
 			plantB3 = {"c"},
 
 			greenlight2 = {"b"},
-			greenlight4 = {"c"}
+			greenlight4 = {"c"},
+
+			billydoorman2 = {"b"},
+
+			paigedoorman2 = {"b"},
+			paigedoorman4 = {"b"},
+			paigedoorman6 = {"b"},
+			paigedoorman8 = {"b"},
+
+			weirdvyper2 = {"b"},
+
+			holidaygraves2 = {"b"},
+			holidaygraves4 = {"b"},
+
+			comein2 = {"b"},
+			
+			eldenring2 = {"b"},
+
+			mallsim1 = {"b"},
+			mallsim3 = {"c"},
+			mallsim5 = {"d"},
+
+			religious2 = {"b"}
 		}
 	)
 end
@@ -106,5 +128,11 @@ function AddConversations:AddConversations(specificClips, interruptableConvos)
 		end
 		local lineTemplate = self.pvc:getLineTemplate(clip, args)
 		table.insert(conversationBatch, lineTemplate)
+	end
+
+	if(conversationID ~= nil and conversationBatch ~= nil) then
+		local interruptable = interruptableConvos[conversationID] or false
+		self.pvc:addLinesAsConversation(conversationBatch, interruptable, conversationID)
+		conversationBatch = nil
 	end
 end

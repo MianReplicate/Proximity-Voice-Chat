@@ -8,6 +8,28 @@ local function shuffle(tbl)
     end
 end
 
+local function getTeams()
+	if(Extensions.Get("lovebites")) then
+		return MultiTeamBattleDataExtensions.GetTeams()
+	end
+
+	return {
+		[Team.Blue] = "Blue",
+		[Team.Red] = "Red",
+		[Team.Neutral] = "Neutral"
+	}
+end
+
+local function getRandomKeyFromDict(dict)
+	local names = {}
+	for name, _ in pairs(dict) do
+		table.insert(names, name)
+	end
+
+	local randomName = names[math.random(1, #names)]
+	return randomName
+end
+
 local function validateAgainstTemplate(givenTable, template)
 	for index, _ in pairs(template) do
 		if(givenTable[index] == nil) then
@@ -25,6 +47,8 @@ function PVC:Start()
 	if(obj) then
 		self.voiceChat = ScriptedBehaviour.GetScript(obj)
 	else
+		self.disabled = true
+		self.gameObject.GetComponent(TriggerScriptedSignal).Send("voiceChatNotDetected")
 		error("Voice Chat not found! Cannot start up Proximity Voice Chat :(")
 	end
 
@@ -58,12 +82,13 @@ function PVC:Start()
 	self.ongoingConversation = nil
 
 	self.currentTime = 0
-	self.minTimeBetween = 1
-	self.attemptTime = 5
-	self.conversationChance = 0.5
-	self.onelinerChance = 0.5
+	self.minTimeBetween = config.GetFloat("minimumTime")
+	self.attemptTime = 10
+	self.conversationChance = config.GetRange("conversationChance")
+	self.onelinerChance = config.GetRange("onelinerChance")
 	self.currentID = 0
 
+	self.pendingSource = {}
 	self.sourceToActors = {}
 	self.actorsToSources = {}
 
@@ -82,9 +107,17 @@ function PVC:Start()
 	audioSource.maxDistance = self.maxDistanceHear
 end
 
+function PVC:setDebugID(debugID)
+	self.debugID = debugID
+end
+
 function PVC:Update()
+	if(self.disabled) then
+		return
+	end
+
 	for source, actor in pairs(self.sourceToActors) do
-		if(not source.isPlaying) then
+		if(not source.isPlaying and not self.pendingSource[source]) then
 			self:stopSpeakingActor(actor)
 		else
 			local position = Vector3(actor.position.x, actor.position.y + 1.8, actor.position.z)
@@ -104,8 +137,10 @@ function PVC:Update()
 	end
 
 	self:debug("Rolling chance for a new convo")
-	local debugID
+	local debugID = self.debugID
 	local tableToUse = nil
+
+	-- debugID = "comein"
 
 	if(debugID ~= nil) then
 		tableToUse = self.identifiableConvos
@@ -131,19 +166,14 @@ function PVC:Update()
 		self.tryingToGetConversation = true
 		local speakers = nil
 		local randomConversation = nil
-		local maxTries = 20
-		local tries = 0
 
 		self:debug("Attempting to get speakers")
-		while(speakers == nil and tries < maxTries) do
-			if(debugID ~= nil) then
-				randomConversation = tableToUse[debugID]
-			else
-				randomConversation = tableToUse[math.random(1, #tableToUse)]
-			end
-			speakers = self:getSpeakersFor(randomConversation)
-			tries = tries + 1
+		if(debugID ~= nil) then
+			randomConversation = tableToUse[debugID]
+		else
+			randomConversation = tableToUse[math.random(1, #tableToUse)]
 		end
+		speakers = self:getSpeakersFor(randomConversation)
 
 		if(speakers == nil) then
 			self.tryingToGetConversation = false
@@ -221,7 +251,7 @@ function PVC:onActorDied(actor, damageInfo)
 		return
 	end
 
-	if(not self.playForPlayerTeam and actor.team == Player.actor.team) then
+	if(not self.playForPlayerTeam and actor.team == Player.team) then
 		return
 	end
 
@@ -233,7 +263,9 @@ function PVC:onActorDied(actor, damageInfo)
 		return
 	end
 
-	self:playClip(actor, self.sourceBank.clips[math.random(1, #self.sourceBank.clips)], self.audioDelay)
+	self.script.StartCoroutine(function()
+		self:playClip(actor, self.sourceBank.clips[math.random(1, #self.sourceBank.clips)], self.audioDelay)	
+	end)
 end
 
 function PVC:createNewSource(ignoreLimit)
@@ -262,9 +294,12 @@ function PVC:playClip(actor, clip, audioDelay, ignoreLimit, volumeMultiplier)
 		source.volume = source.volume * (volumeMultiplier or 1)
 		self.script.StartCoroutine(function()
 			coroutine.yield(WaitForSeconds(audioDelay))
-			source.PlayOneShot(clip)
+			self.pendingSource[source] = source
 			self.sourceToActors[source] = actor
 			self.actorsToSources[actor] = source
+			coroutine.yield(nil) -- Delay for a moment to let audio load
+			source.PlayOneShot(clip)
+			self.pendingSource[source] = nil
 		end)
 	end
 
@@ -361,15 +396,6 @@ function PVC:getSpeakersFor(conversation)
 		error("There is no such conversation to get speakers for!")
 	end
 
-	local speakers = {}
-	local actors = ActorManager.AliveActorsInRange(Player.actor.transform.position, self.maxDistanceHear - 5)
-	for i, actor in ipairs(actors) do
-		if(actor == Player.actor) then
-			table.remove(actors, i)
-			break
-		end
-	end
-
 	local needed = {}
 	local count = 0
 
@@ -381,20 +407,68 @@ function PVC:getSpeakersFor(conversation)
 		end
 	end
 
-	if(#actors < count) then
-		if(self.resortToVCIfTooFar and not self.voiceChat.queuedClip) then
-			self.useVCForConvo = true
-			actors = ActorManager.GetActorsOnTeam(Player.actor.team)
-
-			for i, actor in ipairs(actors) do
-				if(actor == Player.actor) then
-					table.remove(actors, i)
-					break
-				end
+	local speakers = {}
+	local teamToUse = Player.team
+	local teams = getTeams()
+	teams.Neutral = nil
+	if(teamToUse == Team.Neutral) then
+		teamToUse = getRandomKeyFromDict(teams)
+	end
+	local actors
+	local function clean()
+		for i, actor in ipairs(actors) do
+			if(actor == Player.actor or actor.isDead) then
+				table.remove(actors, i)
+				break
 			end
 		end
 	end
 
+	if(count > 1) then
+		local squads
+		if(Player.team == Team.Neutral) then
+			squads = {}
+			for _, team in ipairs(teams) do
+				local _squads = ActorManager.GetSquadsOnTeam(team)
+				table.move(_squads, 1, #_squads, #squads + 1, squads)
+			end
+		else
+			squads = ActorManager.GetSquadsOnTeam(Player.team)
+		end
+
+		for _, squad in ipairs(squads) do
+			actors = squad.members
+			clean()
+
+			if(#squad.members >= count) then
+				local tooFar = false
+				for _, member in ipairs(squad.members) do
+					if(ActorManager.ActorDistanceToPlayer(member) > self.maxDistanceHear - 10) then
+						tooFar = true
+						break
+					end
+				end
+				if(not tooFar) then
+					break
+				end
+			end
+
+			actors = nil
+		end
+	else
+		actors = ActorManager.AliveActorsInRange(Player.actor.transform.position, self.maxDistanceHear - 10)
+	end
+	
+	-- meh for now let's not have global VC
+	-- if(actors == nil) then
+	-- 	if(self.resortToVCIfTooFar and not self.voiceChat.queuedClip) then
+	-- 		self.useVCForConvo = true
+	-- 		actors = ActorManager.GetActorsOnTeam(teamToUse)
+	-- 		clean()
+	-- 	end
+	-- end
+
+	actors = actors or {}
 	shuffle(actors)
 
 	for _, line in ipairs(conversation.lines) do
