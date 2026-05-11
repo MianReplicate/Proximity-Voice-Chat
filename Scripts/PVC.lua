@@ -46,18 +46,16 @@ function PVC:Start()
 	local obj = GameObject.Find(self.voiceChatMutatorName)
 	if(obj) then
 		self.voiceChat = ScriptedBehaviour.GetScript(obj)
-	else
-		self.disabled = true
-		self.gameObject.GetComponent(TriggerScriptedSignal).Send("voiceChatNotDetected")
-		error("Voice Chat not found! Cannot start up Proximity Voice Chat :(")
 	end
 
-	self.version = "1.3.0"
+	self.version = "1.4.1"
 	self.script.StartCoroutine(function()
         coroutine.yield(WaitForSeconds(1))
-		GameEvents.onActorDiedInfo.RemoveListener(self.voiceChat, "onActorDied")
-		self:log("Lobotomized voice chat! Now we gonna add our own implementation :sunglasses:")
-		self:log("Version: "..self.version)
+		if(self.voiceChat) then
+			GameEvents.onActorDiedInfo.RemoveListener(self.voiceChat, "onActorDied")
+			self:log("Lobotomized voice chat! Now we gonna add our own implementation :sunglasses:")
+		end
+		self:log("Starting up Proximity Voice Chat! Version: "..self.version)
     end)
 
 	local config = self.script.mutator.configuration
@@ -83,7 +81,7 @@ function PVC:Start()
 
 	self.currentTime = 0
 	self.minTimeBetween = config.GetFloat("minimumTime")
-	self.attemptTime = 10
+	self.attemptTime = 1
 	self.conversationChance = config.GetRange("conversationChance")
 	self.onelinerChance = config.GetRange("onelinerChance")
 	self.currentID = 0
@@ -92,7 +90,9 @@ function PVC:Start()
 	self.sourceToActors = {}
 	self.actorsToSources = {}
 
-	self.sourceBank = self.voiceChat.targets.soundBank
+	if(self.voiceChat) then
+		self.sourceBank = self.voiceChat.targets.soundBank
+	end
 
 	GameEvents.onActorDiedInfo.AddListener(self,"onActorDied")
 	GameEvents.onActorCreated.AddListener(self, "onActorCreated")
@@ -107,6 +107,15 @@ function PVC:Start()
 	audioSource.maxDistance = self.maxDistanceHear
 end
 
+function PVC:isSpeaking(actor)
+	local source = self.actorsToSources[actor]
+	if(not source) then
+		return false
+	end
+
+	return self.pendingSource[source] or source.isPlaying
+end
+
 function PVC:setDebugID(debugID)
 	self.debugID = debugID
 end
@@ -117,7 +126,7 @@ function PVC:Update()
 	end
 
 	for source, actor in pairs(self.sourceToActors) do
-		if(not source.isPlaying and not self.pendingSource[source]) then
+		if(not self:isSpeaking(actor)) then
 			self:stopSpeakingActor(actor)
 		else
 			local position = Vector3(actor.position.x, actor.position.y + 1.8, actor.position.z)
@@ -127,7 +136,7 @@ function PVC:Update()
 		end
 	end
 
-		if(self.ongoingConversation or self.tryingToGetConversation) then
+	if(self.ongoingConversation or self.tryingToGetConversation) then
 		return
 	end
 
@@ -139,18 +148,20 @@ function PVC:Update()
 	self:debug("Rolling chance for a new convo")
 	local debugID = self.debugID
 	local tableToUse = nil
+	local usingOneLiner = false
 
 	-- debugID = "comein"
 
 	if(debugID ~= nil) then
 		tableToUse = self.identifiableConvos
 		self:debug("Using debug id!")
-	elseif(math.random() < self.conversationChance and self.conversationsAllowed) then
-		tableToUse = self.conversations
-		self:debug("Using conversation")
 	elseif(math.random() < self.onelinerChance and self.onelinersAllowed) then
 		tableToUse = self.oneliners
 		self:debug("Using one liner")
+		usingOneLiner = true
+	elseif(math.random() < self.conversationChance and self.conversationsAllowed) then
+		tableToUse = self.conversations
+		self:debug("Using conversation")
 	else
 		self.currentTime = self.minTimeBetween
 		return
@@ -163,7 +174,8 @@ function PVC:Update()
 	end
 
 	self.script.StartCoroutine(function()
-		self.tryingToGetConversation = true
+		self.tryingToGetConversation = not usingOneLiner
+		self.currentTime = 0
 		local speakers = nil
 		local randomConversation = nil
 
@@ -177,26 +189,29 @@ function PVC:Update()
 
 		if(speakers == nil) then
 			self.tryingToGetConversation = false
-			self.currentTime = 0
 			return
 		end
 
 		self:debug("Starting conversation!")
 		local id = self.currentID
-		self.ongoingConversation = {
+		local ongoingConversation = {
 			id = id,
 			speakers = speakers,
 			conversation = randomConversation
 		}
-		self.currentID = self.currentID + 1
-		self.tryingToGetConversation = false
+
+		if(not usingOneLiner) then
+			self.ongoingConversation = ongoingConversation
+			self.currentID = self.currentID + 1
+			self.tryingToGetConversation = false
+		end
 
 		for _, line in ipairs(randomConversation.lines) do
-			if(not self:sanityCheckForConversation(id)) then
+			if(not usingOneLiner and not self:sanityCheckForConversation(id)) then
 				return
 			end
 			
-			local speaker = self:getSpeakerInContext(line.speakerID)
+			local speaker = ongoingConversation.speakers[line.speakerID]
 			local source
 			if(self.useVCForConvo) then
 				self:debug("Using Global VC for the clip!")
@@ -212,7 +227,7 @@ function PVC:Update()
 			self:debug("Starting "..line.clip.ToString():match("^[^%(]+"):gsub("%s+$", "")..", volume at "..line.volumeMultiplier..": Speaker "..speaker.name)
 
 			for _, functionToRun in ipairs(line.functions) do
-				if(not self:sanityCheckForConversation(id)) then
+				if(not usingOneLiner and not self:sanityCheckForConversation(id)) then
 					return
 				end
 				functionToRun(speaker, self)
@@ -237,6 +252,12 @@ function PVC:onActorDied(actor, damageInfo)
 				return
 			end
 		end
+	end
+	self:stopSpeakingActor(actor)
+
+	-- Voice chat required for deaths
+	if(self.voiceChat == nil) then
+		return
 	end
 
 	-- don't bother playing if actor is too far for player to hear
@@ -264,7 +285,7 @@ function PVC:onActorDied(actor, damageInfo)
 	end
 
 	self.script.StartCoroutine(function()
-		self:playClip(actor, self.sourceBank.clips[math.random(1, #self.sourceBank.clips)], self.audioDelay)	
+		self:playClip(actor, self.sourceBank.clips[math.random(1, #self.sourceBank.clips)], self.audioDelay)
 	end)
 end
 
@@ -417,7 +438,7 @@ function PVC:getSpeakersFor(conversation)
 	local actors
 	local function clean()
 		for i, actor in ipairs(actors) do
-			if(actor == Player.actor or actor.isDead) then
+			if(actor == Player.actor or actor.isDead or self:isSpeaking(actor)) then
 				table.remove(actors, i)
 				break
 			end
@@ -457,6 +478,7 @@ function PVC:getSpeakersFor(conversation)
 		end
 	else
 		actors = ActorManager.AliveActorsInRange(Player.actor.transform.position, self.maxDistanceHear - 10)
+		clean()
 	end
 	
 	-- meh for now let's not have global VC
@@ -514,7 +536,6 @@ end
 function PVC:stopConversation(actor)
 	self:debug("Stopped conversation!")
 	self.ongoingConversation = nil
-	self.currentTime = 0
 
 	if(actor ~= nil) then
 		self:stopSpeakingActor(actor)

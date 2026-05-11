@@ -76,10 +76,11 @@ MonoBehaviour:
         orderPriority: 31
       - id: 
         displayName: The below options are relating to actors using proximity voice
-          chat for chatter
+          chat for chattering
         orderPriority: 27
       - id: 
         displayName: The below options are relating to voicelines playing upon death
+          (REQUIRES VOICE CHAT SIMULATOR)
         orderPriority: 5
       - id: 
         displayName: The below options affect both death voicelines and chatter voicelines
@@ -100,7 +101,7 @@ MonoBehaviour:
       integers:
       - id: maxSounds
         displayName: Max Ongoing Sounds
-        orderPriority: 4
+        orderPriority: 6
         value: 6
       - id: maxDistanceHear
         displayName: Max Hearable Audio Distance (METERS)
@@ -118,7 +119,7 @@ MonoBehaviour:
       - id: minimumTime
         displayName: Minimum Time Between Voicelines (SECONDS)
         orderPriority: 28
-        value: 20
+        value: 10
       ranges:
       - id: volume
         displayName: Volume
@@ -130,7 +131,7 @@ MonoBehaviour:
           wholeNumbers: 0
       - id: audioChance
         displayName: Chance of Audio Playing
-        orderPriority: 4
+        orderPriority: 6
         value:
           value: 0.5
           min: 0
@@ -148,7 +149,7 @@ MonoBehaviour:
         displayName: Chance of One Liner Playing
         orderPriority: 32
         value:
-          value: 0.8
+          value: 0.9
           min: 0
           max: 1
           wholeNumbers: 0
@@ -410,7 +411,6 @@ MonoBehaviour:
   - {fileID: 8300000, guid: befdde1d956ac634d9bb56fa2ce63307, type: 3}
   - {fileID: 8300000, guid: d10f3cfa25e68c843b8fff84febaab83, type: 3}
   - {fileID: 8300000, guid: 3d1777922eacdda4588dd8770d81e18c, type: 3}
-  - {fileID: 8300000, guid: 3abad5a1a97375549b26217051adcca3, type: 3}
   - {fileID: 8300000, guid: fd691d98fce49df49b61d8fe0ecac989, type: 3}
   - {fileID: 8300000, guid: 533bab3b673c2b84492fea0dba0e1589, type: 3}
   - {fileID: 8300000, guid: ac3c83bf3c37d1946833c0b7658f4820, type: 3}
